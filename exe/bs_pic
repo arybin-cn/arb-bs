@@ -6,15 +6,15 @@ include Arb
 
 domain='www.budejie.com'
 map_file='map.txt'
-max_page=ARGV[0] || 50
+max_page=(ARGV[0] || 50).to_i
 #Minimun idle time(in seconds) between two complete rounds.
-min_idle_time=ARGV[1] || 600
+min_idle_time=(ARGV[1] || 600).to_i
 
 
 File.open(map_file,'w+') unless File.exists? map_file
 
 loop do
-  "http://#{domain}/pic/?".enum('?',1..max_page.to_i).each_with_index do |url,index|
+  "http://#{domain}/pic/?".enum('?',1..max_page).each_with_index do |url,index|
     Crawler.get_by_css(url,"div.j-r-list-c-img a img").each do |hash|
       url_file=Crawler.filename_of_url(hash[:"data-original"])
       unless File.readlines(map_file).find{|line| line.to_s.include? url_file}
@@ -30,7 +30,7 @@ loop do
     puts "Page round finished for page #{index+1}, next action in #{tmp} seconds later."
     sleep tmp
   end
-  tmp=30+rand(30)
+  tmp=min_idle_time+rand(5)
   puts "Complete round finished, next action in #{tmp} seconds later."
   sleep tmp
 end
