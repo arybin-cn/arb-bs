@@ -1,0 +1,33 @@
+#!/usr/bin/env ruby
+
+require 'arb/crawler'
+
+include Arb
+
+domain='www.budejie.com'
+map_file='map.txt'
+max_page=ARGV.first || 50
+
+File.open(map_file,'w+') unless File.exists? map_file
+
+loop do
+  "http://#{domain}/pic/?".enum('?',1..max_page.to_i).each_with_index do |url,index|
+    Crawler.get_by_css(url,"div.j-r-list-c-img a img").each do |hash|
+      url_file=Crawler.filename_of_url(hash[:"data-original"])
+      unless File.readlines(map_file).find{|line| line.to_s.include? url_file}
+        if Crawler.download(hash[:"data-original"],url_file)
+          puts "#{hash[:'data-original']}\n#{hash[:title]}",''
+          File.open map_file,'a' do |file|
+            file.puts "#{url_file}:#{hash[:title]}"
+          end
+        end
+      end
+    end
+    tmp=1+rand(5)
+    puts "Page round finished for page #{index+1}, next action in #{tmp} seconds later."
+    sleep tmp
+  end
+  tmp=30+rand(30)
+  puts "Complete round finished, next action in #{tmp} seconds later."
+  sleep tmp
+end
