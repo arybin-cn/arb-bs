@@ -15,13 +15,18 @@ File.open(map_file,'w+') unless File.exists? map_file
 
 loop do
   "http://#{domain}/pic/?".enum('?',1..max_page).each_with_index do |url,index|
-    Crawler.get_by_css(url,"div.j-r-list-c-img a img").each do |hash|
+    res=Crawler.get_by_css(url,"div.j-r-list-c-img a img")
+    unless res
+      puts "Some errors occur when parsing page #{index+1}."
+      next
+    end
+    res.each do |hash|
       url_file=Crawler.filename_of_url(hash[:"data-original"])
       unless File.readlines(map_file).find{|line| line.to_s.include? url_file}
         if Crawler.download(hash[:"data-original"],url_file)
           puts "#{hash[:'data-original']}\n#{hash[:title]}",''
           File.open map_file,'a' do |file|
-            file.puts "#{url_file}:#{hash[:title]}"
+            file.puts "#{url_file}:#{Crawler.filter_str(hash[:title])}"
           end
         end
       end
