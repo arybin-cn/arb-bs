@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require 'arb/thread'
 require 'arb/crawler'
 
 include Arb
@@ -9,31 +10,37 @@ map_file='map.txt'
 max_page=(ARGV[0] || 50).to_i
 #Minimun idle time(in seconds) between two complete rounds.
 min_idle_time=(ARGV[1] || 600).to_i
+thread_count=(ARGV[2] || 3).to_i
 
 
 File.open(map_file,'w+') unless File.exists? map_file
 
-loop do
-  "http://#{domain}/pic/?".enum('?',1..max_page).each_with_index do |url,index|
-    res=Crawler.get_by_css(url,"div.j-r-list-c-img a img")
-    unless res
-      puts "Some errors occur when parsing page #{index+1}."
-      next
-    end
-    res.each do |hash|
-      url_file=Crawler.filename_of_url(hash[:"data-original"])
-      unless File.readlines(map_file).find{|line| line.to_s.include? url_file}
-        if Crawler.download(hash[:"data-original"],url_file)
-          puts "#{hash[:'data-original']}\n#{hash[:title]}",''
-          File.open map_file,'a' do |file|
-            file.puts "#{url_file}:#{Crawler.filter_str(hash[:title])}"
+Thread.parallel(thread_count) do |dispatcher|
+
+  loop do
+    "http://#{domain}/pic/?".enum('?',1..max_page).each_with_index do |url,index|
+      dispatcher.new_task do
+        res=Crawler.get_by_css(url,"div.j-r-list-c-img a img")
+        unless res
+          puts "Some errors occur when parsing page #{index+1}."
+          next
+        end
+        res.each do |hash|
+          url_file=Crawler.filename_of_url(hash[:"data-original"])
+          unless File.readlines(map_file).find{|line| line.to_s.include? url_file}
+            if Crawler.download(hash[:"data-original"],url_file)
+              puts "#{hash[:'data-original']}\n#{hash[:title]}",''
+              File.open map_file,'a' do |file|
+                file.puts "#{url_file}:#{Crawler.filter_str(hash[:title])}"
+              end
+            end
           end
         end
+        tmp=1+rand(5)
+        puts "Page round finished for page #{index+1}, next action in #{tmp} seconds later."
+        sleep tmp
       end
     end
-    tmp=1+rand(5)
-    puts "Page round finished for page #{index+1}, next action in #{tmp} seconds later."
-    sleep tmp
   end
   tmp=min_idle_time+rand(5)
   puts "Complete round finished, next action in #{tmp} seconds later."
