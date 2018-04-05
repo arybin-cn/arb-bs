@@ -8,9 +8,9 @@ include Arb
 domain='www.budejie.com'
 map_file='map.txt'
 max_page=(ARGV[0] || 50).to_i
+thread_count=(ARGV[1] || 3).to_i
 #Minimun idle time(in seconds) between two complete rounds.
-min_idle_time=(ARGV[1] || 600).to_i
-thread_count=(ARGV[2] || 3).to_i
+min_idle_time=(ARGV[2] || 600).to_i
 
 
 File.open(map_file,'w+') unless File.exists? map_file
