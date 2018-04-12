@@ -1,0 +1,51 @@
+#!/usr/bin/env ruby
+
+require 'arb/thread'
+require 'arb/crawler'
+
+include Arb
+
+domain='www.budejie.com'
+map_file='map.txt'
+
+thread_count=(ARGV[0] || 3).to_i
+max_page=(ARGV[1] || 50).to_i
+#Minimun idle time(in seconds) between two complete rounds.
+min_idle_time=(ARGV[2] || 600).to_i
+
+
+File.open(map_file,'w+') unless File.exists? map_file
+
+Thread.parallel(thread_count) do |dispatcher|
+
+  loop do
+    "http://#{domain}/pic/?".enum('?',1..max_page).each_with_index do |url,index|
+      dispatcher.new_task do |lock|
+        res=Crawler.get_by_css(url,"div.j-r-list-c-img a img")
+        unless res
+          puts "Some errors occur when parsing page #{index+1}."
+          next
+        end
+        res.each do |hash|
+          url_file=Crawler.filename_of_url(hash[:"data-original"])
+
+          lock.synchronize do 
+            unless File.readlines(map_file).find{|line| line.to_s.include? url_file}
+                puts "#{hash[:'data-original']}\n#{hash[:title]}",''
+                File.open map_file,'a' do |file|
+                  file.puts "#{hash[:'data-original']}:#{hash[:title]}"
+                end
+            end
+          end
+
+        end
+        tmp=1+rand(5)
+        puts "Page round finished for page #{index+1}, next action in #{tmp} seconds later."
+        sleep tmp
+      end
+    end
+    tmp=min_idle_time+rand(5)
+    puts "Complete round finished, next action in #{tmp} seconds later."
+    sleep tmp
+  end
+end
