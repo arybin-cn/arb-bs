@@ -26,15 +26,14 @@ Thread.parallel(thread_count) do |dispatcher|
           puts "Some errors occur when parsing page #{index+1}."
           next
         end
-        res.each do |hash|
-          url_file=Crawler.filename_of_url(hash[:"data-original"])
-
-          lock.synchronize do 
+        lock.synchronize do 
+          res.each do |hash|
+            url_file=Crawler.filename_of_url(hash[:"data-original"])
             unless File.readlines(map_file).find{|line| line.to_s.include? url_file}
-                puts "#{hash[:'data-original']}\n#{hash[:title]}",''
-                File.open map_file,'a' do |file|
-                  file.puts "#{hash[:'data-original']}:#{hash[:title]}"
-                end
+              puts "#{hash[:'data-original']}\n#{hash[:title]}",''
+              File.open map_file,'a' do |file|
+                file.puts "#{hash[:'data-original']}:#{hash[:title].delete("\n")}"
+              end
             end
           end
 
